@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Utforska hur vind, sektorvinkel och regn påverkar en pedagogisk spridningsmodell för I-131 vid Ringhals.">
+  <meta name="theme-color" content="#102d3a">
+  <title>I-131 · Spridningslabbet</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="style.css">
+  <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script defer src="model.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+<header class="masthead"><a class="brand" href="#"><span class="brand-icon" aria-hidden="true">◔</span> SPRIDNINGSLABBET <span class="isotope">I-131</span></a><a href="#forklaring">Så fungerar modellen ↗</a></header>
+<main>
+  <section class="intro"><div><p class="eyebrow">RINGHALS / INTERAKTIV SEKTORMODELL</p><h1>Se hur vinden formar spridningen.</h1><p>Dra i reglagen. Följ hur tårtbiten och resultaten förändras direkt.</p></div><button id="reset" class="button">Återställ exempel ↺</button></section>
+  <p class="notice"><strong>Pedagogiskt räkneexempel.</strong> Modellen är inte validerad för prognoser, strålskyddsbeslut eller operativ beredskap vid en verklig kärnteknisk olycka.</p>
+  <div class="workspace">
+    <aside class="controls" aria-label="Modellens reglage">
+      <div class="section-title"><span>01</span><h2>Forma tårtbiten</h2></div>
+      <div id="weather-controls"></div>
+      <div class="preset"><label for="pasquill">Atmosfärens stabilitet</label><select id="pasquill"><option value="A">A · instabil, 60°</option><option value="B">B · 45°</option><option value="C">C · 30°</option><option value="D" selected>D · neutral, 20°</option><option value="E">E · 15°</option><option value="F">F · stabil, 10°</option><option value="custom" disabled>Egen sektorvinkel</option></select><p>Illustrativa vinklar, inte standardiserade Pasquillkoefficienter.</p></div>
+      <div id="geometry-controls"></div>
+      <details open><summary>02 <span>Utsläpp, regn & luft</span></summary><div id="deposition-controls"></div><p class="hint">Regnreglaget anger ett illustrativt tillskott: 0 % inget, 20 % lätt, 60 % kraftigt. Ingen uppmätt regnintensitet.</p></details>
+      <details><summary>03 <span>Personens exponering</span></summary><div id="person-controls"></div><p class="hint">Reglagen växlar kartan till effektiv inhalationsdos. De påverkar intaget, inte sektorns geometri. Avresa vid 8 h innebär att personen stannar under hela exponeringen.</p></details>
+      <details><summary>04 <span>Doskoefficienter</span></summary><p class="hint">Endast illustrativa exempel. Välj relevanta ICRP-koefficienter för ålder, kemisk form och integrationstid innan en motiverad dosberäkning.</p><label class="number-label" for="effectiveCoefficient">Effektiv dos [Sv/Bq]<input id="effectiveCoefficient" type="number" min="0" step="any" value="1e-8"></label><label class="number-label" for="thyroidCoefficient">Sköldkörteldos [Sv/Bq]<input id="thyroidCoefficient" type="number" min="0" step="any" value="2e-7"></label><p id="input-error" role="alert"></p></details>
+    </aside>
+    <section class="results" aria-label="Karta och beräknade resultat">
+      <div class="map-panel">
+        <div class="map-heading"><div><p class="eyebrow">GEOGRAFISK VY</p><h2>En tårtbit över västkusten</h2></div><button id="fit" class="button small">Visa hela sektorn</button></div>
+        <div class="map-tools"><label for="metric">Kartans färg visar</label><select id="metric"><option value="ground">Markbeläggning · Bq/m²</option><option value="concentration">Luftkoncentration · Bq/m³</option><option value="effective">Effektiv inhalationsdos · mSv</option><option value="thyroid">Ekvivalent sköldkörteldos · mSv</option></select></div>
+        <div class="map-wrap"><div id="map" aria-label="Interaktiv karta med sektor från Ringhals"></div><svg id="fallback" viewBox="0 0 800 500" role="img" aria-label="Schematisk sektor i lokala koordinater" hidden></svg><div class="map-badge"><span>BERÄKNAD SEKTORAREA</span><strong id="map-area">—</strong></div></div>
+        <p id="map-status" class="map-status" role="status"></p>
+        <div class="legend"><span id="legend-title">Markbeläggning</span><div class="gradient"></div><div class="legend-scale"><span>0</span><span id="legend-mid"></span><span id="legend-max"></span></div><p>Fast logaritmisk färgskala. Färgen visar ett jämnt sektormedelvärde, inga riskzoner.</p></div>
+      </div>
+      <div class="stats"><article><span>Sektorarea</span><strong id="area">—</strong><small id="geometry-note"></small></article><article><span>Markbeläggning</span><strong id="ground">—</strong><small>Bq per kvadratmeter</small></article><article><span>Luftkoncentration</span><strong id="concentration">—</strong><small>Bq per kubikmeter</small></article></div>
+      <div class="insight"><span aria-hidden="true">↳</span><p id="insight"></p></div>
+      <section class="budget"><div class="section-title"><span>RESULTAT</span><h2>Från utsläpp till inandning</h2></div><div class="budget-bar" aria-hidden="true"><div id="ground-bar"></div></div><p id="budget-caption"></p><dl id="result-list"></dl><p class="hint">Persondosen gäller den antagna vistelsen någonstans inne i sektorn. Effektiv dos och ekvivalent sköldkörteldos är olika storheter och ska inte summeras.</p></section>
+    </section>
+  </div>
+  <section id="forklaring" class="explanation"><p class="eyebrow">FYSIKEN BAKOM REGLAGEN</p><h2>En enkel modell, synliga antaganden.</h2><div class="explanation-grid"><article><span class="step">1 / SPRIDNING</span><h3>Vinden bestämmer radien.</h3><p>Transportsträckan är vindhastighet gånger utsläppstid, begränsad till maximal radie. Större sektorvinkel ger större yta.</p><code>R = min(v × t, R_max)<br>A = θ / 2 × R²</code><p>θ räknas i radianer. Vindriktningen anger varifrån vinden kommer. 270° betyder vind från väster, med spridning österut.</p></article><article><span class="step">2 / MARK OCH LUFT</span><h3>Samma aktivitet fördelas över ytan.</h3><p>Torrandel och regnandel adderas och begränsas till 0–100 %. Resten finns i luften, jämnt fördelad upp till blandningshöjden.</p><code>Q_mark = Q_total × f<br>C_luft = (Q_total − Q_mark) / (A × H)</code><p>Mer regn ger mer på marken och mindre i luften. Högre blandningshöjd sänker luftkoncentrationen utan att ändra markytan.</p></article><article><span class="step">3 / INHALATION</span><h3>Vistelsen bestämmer intaget.</h3><p>Luftkoncentrationen multipliceras med andningshastighet, vistelsetid och antagen inomhusfaktor. Dos fås med separata doskoefficienter.</p><code>Q_in = C_luft × andning × t_eff × faktor<br>Dos = Q_in × doskoefficient</code><p>Lämnar personen tidigare förkortas exponeringen. Inomhusfaktor 0,2 betyder antagen koncentration på 20 %; inget hus garanterar den faktorn.</p></article></div>
+  <details class="limitations"><summary>Antaganden, begränsningar och källor</summary><p>Detta är en statisk tårtbitsmodell. All aktivitet fördelas över sektorn vid utsläppstidens slut. Luftkoncentrationen hålls därefter konstant under personens hela vistelse. Ankomsttid, plympassage, terräng, radioaktivt sönderfall och extern dos från mark eller moln ingår inte. Radietaket behåller all aktivitet inom området. Utsläppshöjden 50 m är metadata och används inte i denna version.</p><p>Vindvariation anges som ± grader här: ±30° lägger till 60° till sektorbredden. Slutlig vinkel begränsas till 360°. Kartan använder storcirkelpunkter på en sfär; redovisad area är den plana modellarean, inte skärmens projicerade kartarea.</p><p>1 TBq = 10¹² Bq. Källtermen 1 TBq och doskoefficienterna är påhittade räkneexempel. En senare källterm kan väljas från <a href="https://www.stralsakerhetsmyndigheten.se/contentassets/803a831e8c5d4f66be2fd97ee6d26fd0/oversyn-av-beredskapszoner.pdf">SSM 2017:27, Översyn av beredskapszoner</a>. Doskoefficienter bör väljas från relevanta <a href="https://www.icrp.org/publication.asp?id=ICRP+Publication+119">ICRP-data</a> med rätt population och kemisk form. Med intecknade doskoefficienter avser dosen integrationstiden efter intaget, inte enbart vistelsetimmarna.</p><p>Ringhals placeras ungefär vid 57,25972° N, 12,11083° E, enligt <a href="https://www.stralsakerhetsmyndigheten.se/contentassets/11379666457040d582e4421d686b0fbf/202005-general-data-in-accordance-with-the-requirements-in-article-37-of-the-euratom-treaty.pdf">SSM:s anläggningsbeskrivning</a>. Kartdata: © OpenStreetMap-bidragsgivare. Kartbakgrunden kräver internet.</p></details>
+  </section>
+</main><footer>SPRIDNINGSLABBET · I-131 <span>Utbildning & scenariojämförelser</span></footer>
+<noscript>Aktivera JavaScript för att använda reglagen och kartan.</noscript>
+</body></html>
